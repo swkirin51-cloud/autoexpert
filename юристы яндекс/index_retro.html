@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Яндекс.АвтоЭксперт — Оценка виновности в ДТП</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: #1a1e24;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
+      color: #222;
+    }
+
+    /* Мобильный фрейм */
+    .phone-container {
+      width: 100%;
+      max-width: 420px;
+      height: 860px;
+      background: #ffffff;
+      border-radius: 36px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 0 10px #2a2f38, 0 0 0 12px #444b57;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    @media (max-width: 500px) {
+      body {
+        padding: 0;
+      }
+      .phone-container {
+        max-width: 100%;
+        height: 100vh;
+        border-radius: 0;
+        box-shadow: none;
+      }
+    }
+
+    /* Верхний металлический хедер в стиле видео */
+    .app-header {
+      background: linear-gradient(180deg, #5b7588 0%, #3a5467 48%, #203546 52%, #2c4254 100%);
+      height: 56px;
+      min-height: 56px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      position: relative;
+      border-bottom: 1px solid #162430;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.25);
+    }
+
+    .btn-back {
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 38px;
+      padding: 0;
+      transition: transform 0.1s;
+    }
+    .btn-back:active {
+      transform: scale(0.92);
+    }
+    .btn-back img {
+      height: 34px;
+      width: auto;
+      border-radius: 6px;
+    }
+
+    .header-title {
+      flex: 1;
+      text-align: center;
+      color: #ffffff;
+      font-size: 17px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+      padding-right: 48px; /* баланс под кнопку назад */
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Рабочая область экранов */
+    .screen-content {
+      flex: 1;
+      overflow-y: auto;
+      position: relative;
+      background: #fbfbfb;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .screen {
+      display: none;
+      flex-direction: column;
+      min-height: 100%;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Экран 0: Сплэш */
+    .splash-screen {
+      justify-content: center;
+      align-items: center;
+      padding: 30px 24px;
+      text-align: center;
+      background: #ffffff;
+    }
+    .splash-logo {
+      width: 220px;
+      max-width: 80%;
+      margin-bottom: 24px;
+    }
+    .splash-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1a2936;
+      margin-bottom: 8px;
+    }
+    .splash-desc {
+      font-size: 14px;
+      color: #667085;
+      line-height: 1.45;
+      margin-bottom: 36px;
+    }
+    .btn-start {
+      background: linear-gradient(180deg, #d32f2f 0%, #b71c1c 100%);
+      color: #ffffff;
+      border: none;
+      padding: 16px 36px;
+      font-size: 16px;
+      font-weight: 700;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(183, 28, 28, 0.35);
+      letter-spacing: 0.5px;
+      width: 100%;
+      max-width: 280px;
+      transition: transform 0.1s;
+    }
+    .btn-start:active {
+      transform: scale(0.97);
+    }
+
+    .btn-instruction {
+      background: #f0f4f8;
+      color: #334e68;
+      border: 1px solid #bcccdc;
+      padding: 12px 28px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      width: 100%;
+      max-width: 280px;
+      margin-top: 12px;
+      transition: background 0.15s;
+    }
+    .btn-instruction:hover {
+      background: #e2e8f0;
+    }
+
+    .btn-video-guide {
+      background: #ffffff;
+      border: 1.5px solid #5b7588;
+      color: #243b53;
+      padding: 10px 14px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+      transition: background 0.15s;
+    }
+    .btn-video-guide:hover {
+      background: #f0f4f8;
+    }
+
+    /* Списки выбора (как в видео) */
+    .list-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      background: #ffffff;
+      border-bottom: 1px solid #e2e5e9;
+      cursor: pointer;
+      min-height: 70px;
+      transition: background 0.15s;
+    }
+    .list-item:hover, .list-item:active {
+      background: #f0f4f8;
+    }
+    .list-item-icon {
+      width: 90px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 14px;
+      flex-shrink: 0;
+    }
+    .list-item-icon img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    .list-item-text {
+      flex: 1;
+      font-size: 15px;
+      font-weight: 500;
+      color: #111;
+      text-transform: uppercase;
+      line-height: 1.3;
+    }
+    .list-item-badge {
+      background: #eef2f6;
+      color: #2b4255;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 6px;
+      margin-left: 8px;
+    }
+
+    /* Экран ввода тормозного пути (как в видео на 22-26 секундах) */
+    .input-screen-body {
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+    }
+    .prompt-text {
+      font-size: 16px;
+      color: #1a1a1a;
+      text-align: center;
+      line-height: 1.35;
+      margin-bottom: 24px;
+    }
+    .input-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+    }
+    .distance-input-box {
+      width: 150px;
+      height: 64px;
+      border: 2px solid #5b7588;
+      background: #fff;
+      font-size: 38px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #111;
+      border-radius: 4px;
+      position: relative;
+    }
+    .cursor {
+      display: inline-block;
+      width: 2px;
+      height: 38px;
+      background: #111;
+      margin-left: 2px;
+      animation: blink 1s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .unit-label {
+      font-size: 32px;
+      font-weight: 600;
+      color: #111;
+      margin-left: 14px;
+    }
+
+    .limit-selector {
+      width: 100%;
+      background: #eef3f7;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      font-size: 13px;
+    }
+    .limit-selector label {
+      display: block;
+      color: #486581;
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+    .limit-selector select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #bcccdc;
+      border-radius: 6px;
+      font-size: 14px;
+      background: #fff;
+    }
+
+    .instruction-card {
+      font-size: 12px;
+      color: #334e68;
+      line-height: 1.45;
+      background: #f7f9fa;
+      border-left: 3px solid #5b7588;
+      padding: 10px 12px;
+      margin-bottom: 16px;
+      border-radius: 0 6px 6px 0;
+      width: 100%;
+    }
+
+    /* Цифровая клавиатура (как в iOS на видео) */
+    .keypad-container {
+      width: 100%;
+      margin-top: auto;
+      background: #cfd4da;
+      padding: 8px 6px;
+      border-radius: 12px 12px 0 0;
+    }
+    .keypad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    .keypad-btn {
+      background: #ffffff;
+      border: none;
+      height: 48px;
+      font-size: 22px;
+      font-weight: 500;
+      color: #111;
+      border-radius: 6px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.1s;
+    }
+    .keypad-btn:active {
+      background: #e2e8f0;
+    }
+    .keypad-btn.action-btn {
+      background: #4a7d57;
+      color: white;
+      font-size: 15px;
+      font-weight: 700;
+    }
+    .keypad-btn.action-btn:active {
+      background: #3c6546;
+    }
+    .keypad-btn.del-btn {
+      font-size: 18px;
+      background: #b8c1cb;
+    }
+
+    /* Экран 5: Результат (в стиле видео) */
+    .result-body {
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .verdict-box {
+      font-size: 16px;
+      line-height: 1.45;
+      color: #102a43;
+      padding: 16px;
+      border-radius: 10px;
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      border-left: 5px solid #d32f2f;
+    }
+    .verdict-box.innocent {
+      border-left-color: #2e7d32;
+    }
+    .formula-breakdown {
+      background: #f0f4f8;
+      border: 1px solid #d9e2ec;
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 13px;
+      color: #334e68;
+    }
+    .formula-breakdown h4 {
+      color: #102a43;
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+    .math-formula {
+      font-family: "Courier New", Courier, monospace;
+      font-weight: 700;
+      color: #0b69a3;
+      font-size: 15px;
+      margin: 8px 0;
+      background: #fff;
+      padding: 6px 10px;
+      border-radius: 4px;
+      border: 1px solid #d9e2ec;
+    }
+
+    .btn-lawyers {
+      background: linear-gradient(180deg, #d32f2f 0%, #b71c1c 100%);
+      color: #fff;
+      border: none;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(183, 28, 28, 0.3);
+      margin-top: 10px;
+      text-transform: uppercase;
+    }
+
+    /* Экран 6: Адвокаты (точно как на видео кадре 33) */
+    .lawyers-header-text {
+      padding: 16px 20px 10px;
+      font-size: 15px;
+      font-weight: 500;
+      text-align: center;
+      line-height: 1.35;
+      color: #111;
+      border-bottom: 2px solid #e0e0e0;
+    }
+    .lawyer-card {
+      display: flex;
+      align-items: center;
+      padding: 12px 14px;
+      border-bottom: 2px solid #e53935;
+      position: relative;
+      background: #fff;
+    }
+    .lawyer-num {
+      font-size: 20px;
+      font-weight: 600;
+      color: #333;
+      width: 28px;
+      flex-shrink: 0;
+    }
+    .lawyer-avatar {
+      width: 68px;
+      height: 80px;
+      object-fit: cover;
+      border-radius: 4px;
+      margin-right: 14px;
+      flex-shrink: 0;
+    }
+    .lawyer-info {
+      flex: 1;
+      font-size: 12px;
+      color: #444;
+      line-height: 1.4;
+    }
+    .lawyer-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: #111;
+      margin-bottom: 2px;
+    }
+    .btn-appointment {
+      display: inline-block;
+      margin-top: 5px;
+      color: #d32f2f;
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+      text-transform: uppercase;
+      cursor: pointer;
+    }
+    .btn-appointment:hover {
+      text-decoration: underline;
+    }
+
+    /* Модальное окно записи */
+    .modal-overlay {
+      display: none;
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 100;
+    }
+    .modal-box {
+      background: #fff;
+      border-radius: 14px;
+      padding: 24px;
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+    }
+    .modal-box h3 {
+      font-size: 18px;
+      margin-bottom: 10px;
+      color: #1a2936;
+    }
+    .modal-box p {
+      font-size: 14px;
+      color: #555;
+      line-height: 1.4;
+      margin-bottom: 18px;
+    }
+    .btn-modal-close {
+      background: #3a5467;
+      color: #fff;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="phone-container">
+
+    <!-- Верхний хедер -->
+    <header class="app-header">
+      <button class="btn-back" id="backBtn" onclick="app.prevScreen()" style="visibility: hidden;">
+        <img src="assets/btn_back.png" alt="Назад">
+      </button>
+      <div class="header-title" id="headerTitle">АВТО.ЭКСПЕРТ</div>
+    </header>
+
+    <!-- Содержимое экранов -->
+    <div class="screen-content">
+
+      <!-- ЭКРАН 0: СПЛЭШ -->
+      <div class="screen splash-screen active" id="screen-splash">
+        <img src="assets/logo.png" alt="Авто.Эксперт" class="splash-logo">
+        <h1 class="splash-title">Яндекс.АвтоЭксперт</h1>
+        <p class="splash-desc">
+          Экспресс-оценка скорости автомобиля в момент торможения и вероятности вины по официальным формулам МВД и Минюста РФ
+        </p>
+        <button class="btn-start" onclick="app.nextScreen('screen-classification')">НАЧАТЬ РАСЧЕТ</button>
+        <button class="btn-instruction" onclick="app.openInfoModal('project')">ИНСТРУКЦИЯ К ПРОЕКТУ</button>
+      </div>
+
+      <!-- ЭКРАН 1: КЛАССИФИКАЦИЯ ДТП -->
+      <div class="screen" id="screen-classification">
+        <div class="list-item" onclick="app.setParam('accidentType', 'Столкновение'); app.nextScreen('screen-vehicle')">
+          <div class="list-item-icon"><img src="assets/dtp_collision.png" alt=""></div>
+          <div class="list-item-text">СТОЛКНОВЕНИЕ</div>
+        </div>
+        <div class="list-item" onclick="app.setParam('accidentType', 'Наезд на пешехода'); app.nextScreen('screen-vehicle')">
+          <div class="list-item-icon"><img src="assets/dtp_pedestrian.png" alt=""></div>
+          <div class="list-item-text">НАЕЗД НА ПЕШЕХОДА</div>
+        </div>
+        <div class="list-item" onclick="app.setParam('accidentType', 'Наезд на стоящее ТС'); app.nextScreen('screen-vehicle')">
+          <div class="list-item-icon"><img src="assets/dtp_parked.png" alt=""></div>
+          <div class="list-item-text">НАЕЗД НА СТОЯЩЕЕ ТС</div>
+        </div>
+        <div class="list-item" onclick="app.setParam('accidentType', 'Наезд на препятствие'); app.nextScreen('screen-vehicle')">
+          <div class="list-item-icon"><img src="assets/dtp_obstacle.png" alt=""></div>
+          <div class="list-item-text">НАЕЗД НА ПРЕПЯТСТВИЕ</div>
+        </div>
+        <div class="list-item" onclick="app.setParam('accidentType', 'Наезд на велосипедиста'); app.nextScreen('screen-vehicle')">
+          <div class="list-item-icon"><img src="assets/dtp_bicycle.png" alt=""></div>
+          <div class="list-item-text">НАЕЗД НА ВЕЛОСИПЕДИСТА</div>
+        </div>
+      </div>
+
+      <!-- ЭКРАН 2: ТИП ТС (Коэффициент kt) -->
+      <div class="screen" id="screen-vehicle">
+        <div class="list-item" onclick="app.setVehicle(1.0, 'Легковой автомобиль'); app.nextScreen('screen-road')">
+          <div class="list-item-icon"><img src="assets/veh_car.png" alt=""></div>
+          <div class="list-item-text">ЛЕГКОВОЙ АВТОМОБИЛЬ</div>
+          <span class="list-item-badge">kt = 1.0</span>
+        </div>
+        <div class="list-item" onclick="app.setVehicle(1.0, 'Кроссовер / Внедорожник'); app.nextScreen('screen-road')">
+          <div class="list-item-icon"><img src="assets/veh_suv.png" alt=""></div>
+          <div class="list-item-text">ВНЕДОРОЖНИК / SUV</div>
+          <span class="list-item-badge">kt = 1.0</span>
+        </div>
+        <div class="list-item" onclick="app.setVehicle(1.2, 'Грузовой автомобиль (до 3.5 т)'); app.nextScreen('screen-road')">
+          <div class="list-item-icon"><img src="assets/veh_light_truck.png" alt=""></div>
+          <div class="list-item-text">ГРУЗОВОЙ ДО 3.5 Т</div>
+          <span class="list-item-badge">kt = 1.2</span>
+        </div>
+        <div class="list-item" onclick="app.setVehicle(1.2, 'Грузовой автомобиль (более 3.5 т)'); app.nextScreen('screen-road')">
+          <div class="list-item-icon"><img src="assets/veh_heavy_truck.png" alt=""></div>
+          <div class="list-item-text">ГРУЗОВОЙ СВЫШЕ 3.5 Т</div>
+          <span class="list-item-badge">kt = 1.2</span>
+        </div>
+        <div class="list-item" onclick="app.setVehicle(1.2, 'Автобус'); app.nextScreen('screen-road')">
+          <div class="list-item-icon"><img src="assets/veh_bus.png" alt=""></div>
+          <div class="list-item-text">АВТОБУС</div>
+          <span class="list-item-badge">kt = 1.2</span>
+        </div>
+      </div>
+
+      <!-- ЭКРАН 3: СОСТОЯНИЕ ПРОЕЗЖЕЙ ЧАСТИ (Коэффициент kc) -->
+      <div class="screen" id="screen-road">
+        <div class="list-item" onclick="app.setRoad(0.7, 'Сухой асфальт'); app.nextScreen('screen-distance')">
+          <div class="list-item-text">СУХОЙ АСФАЛЬТ</div>
+          <span class="list-item-badge">kc = 0.7</span>
+        </div>
+        <div class="list-item" onclick="app.setRoad(0.4, 'Мокрый асфальт'); app.nextScreen('screen-distance')">
+          <div class="list-item-text">МОКРЫЙ АСФАЛЬТ</div>
+          <span class="list-item-badge">kc = 0.4</span>
+        </div>
+        <div class="list-item" onclick="app.setRoad(0.2, 'Укатанный снег'); app.nextScreen('screen-distance')">
+          <div class="list-item-text">УКАТАННЫЙ СНЕГ</div>
+          <span class="list-item-badge">kc = 0.2</span>
+        </div>
+        <div class="list-item" onclick="app.setRoad(0.1, 'Обледенение / Гололед'); app.nextScreen('screen-distance')">
+          <div class="list-item-text">ОБЛЕДЕНЕНИЕ / ГОЛОЛЕД</div>
+          <span class="list-item-badge">kc = 0.1</span>
+        </div>
+      </div>
+
+      <!-- ЭКРАН 4: ВВОД ТОРМОЗНОГО ПУТИ S -->
+      <div class="screen" id="screen-distance">
+        <div class="input-screen-body">
+          <div class="prompt-text">
+            Укажите длину следа юза (тормозного пути) Вашего автомобиля в метрах:
+          </div>
+
+          <div class="input-row">
+            <div class="distance-input-box">
+              <span id="distanceVal">25</span><span class="cursor"></span>
+            </div>
+            <span class="unit-label">М</span>
+          </div>
+
+          <div class="limit-selector">
+            <label for="speedLimit">Разрешенная скорость на данном участке дороги:</label>
+            <select id="speedLimit" onchange="app.state.speedLimit = Number(this.value)">
+              <option value="60" selected>60 км/ч (Город / населенный пункт)</option>
+              <option value="40">40 км/ч (Ограничение / жилая зона)</option>
+              <option value="20">20 км/ч (Дворовая территория)</option>
+              <option value="90">90 км/ч (Вне населенного пункта)</option>
+              <option value="110">110 км/ч (Автомагистраль)</option>
+            </select>
+          </div>
+
+          <button class="btn-video-guide" onclick="app.openInfoModal('measure')">
+            📹 ВИДЕОИНСТРУКЦИЯ / ПРАВИЛА ЗАМЕРА
+          </button>
+
+          <div class="instruction-card">
+            <strong>Как замерить след торможения:</strong><br>
+            Замерьте рулеткой непрерывную полосу черного следа шин на дорожном покрытии от начала блокировки колес до полной остановки автомобиля.
+          </div>
+
+          <div style="font-size: 11px; color: #b71c1c; text-align: center; margin-bottom: 12px; line-height: 1.3;">
+            На этой стадии можете приостановить расчет для установления точной длины следа.
+          </div>
+
+          <!-- Клавиатура (в стиле видео) -->
+          <div class="keypad-container">
+            <div class="keypad-grid">
+              <button class="keypad-btn" onclick="app.pressKey('1')">1</button>
+              <button class="keypad-btn" onclick="app.pressKey('2')">2</button>
+              <button class="keypad-btn" onclick="app.pressKey('3')">3</button>
+              <button class="keypad-btn" onclick="app.pressKey('4')">4</button>
+              <button class="keypad-btn" onclick="app.pressKey('5')">5</button>
+              <button class="keypad-btn" onclick="app.pressKey('6')">6</button>
+              <button class="keypad-btn" onclick="app.pressKey('7')">7</button>
+              <button class="keypad-btn" onclick="app.pressKey('8')">8</button>
+              <button class="keypad-btn" onclick="app.pressKey('9')">9</button>
+              <button class="keypad-btn del-btn" onclick="app.pressKey('DEL')">⌫</button>
+              <button class="keypad-btn" onclick="app.pressKey('0')">0</button>
+              <button class="keypad-btn action-btn" onclick="app.calculate()">РАСЧЕТ</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ЭКРАН 5: РЕЗУЛЬТАТ РАСЧЕТА ПО ФОРМУЛЕ -->
+      <div class="screen" id="screen-result">
+        <div class="result-body">
+          <div class="verdict-box" id="verdictBox">
+            <!-- Текст вердикта вставится динамически -->
+          </div>
+
+          <div class="formula-breakdown">
+            <h4>Расчет по формуле Минюста / МВД РФ:</h4>
+            <div class="math-formula">V = √(S · kc · 254 / kt)</div>
+            <div id="mathDetails" style="line-height: 1.6;">
+              <!-- Детали формулы -->
+            </div>
+          </div>
+
+          <button class="btn-lawyers" onclick="app.nextScreen('screen-lawyers')">
+            Показать адвокатов по ДТП
+          </button>
+        </div>
+      </div>
+
+      <!-- ЭКРАН 6: СПИСОК АДВОКАТОВ (КАДР 33 ИЗ ВИДЕО) -->
+      <div class="screen" id="screen-lawyers">
+        <div class="lawyers-header-text">
+          Вам следует обратиться за помощью к адвокату специализирующемуся по расследованию дорожно-транспортных происшествий
+        </div>
+
+        <div class="lawyer-card">
+          <div class="lawyer-num">1.</div>
+          <img src="assets/lawyer_m.png" alt="Петров" class="lawyer-avatar">
+          <div class="lawyer-info">
+            <div class="lawyer-name">Петров Петр Петрович</div>
+            <div>тел. 8-888-888-88-88</div>
+            <div>Адрес: г. Москва, ул. Петровская, д. 8</div>
+            <a class="btn-appointment" onclick="app.openModal('Петров Петр Петрович')">ЗАПИСАТЬСЯ НА ПРИЕМ</a>
+          </div>
+        </div>
+
+        <div class="lawyer-card">
+          <div class="lawyer-num">2.</div>
+          <img src="assets/lawyer_f.png" alt="Светлая" class="lawyer-avatar">
+          <div class="lawyer-info">
+            <div class="lawyer-name">Светлая Светлана Сергеевна</div>
+            <div>тел. 8-888-888-88-88</div>
+            <div>Адрес: г. Москва, ул. Петровская, д. 8</div>
+            <a class="btn-appointment" onclick="app.openModal('Светлая Светлана Сергеевна')">ЗАПИСАТЬСЯ НА ПРИЕМ</a>
+          </div>
+        </div>
+
+        <div class="lawyer-card">
+          <div class="lawyer-num">3.</div>
+          <img src="assets/lawyer_m.png" alt="Иванов" class="lawyer-avatar">
+          <div class="lawyer-info">
+            <div class="lawyer-name">Иванов Иван Иванович</div>
+            <div>тел. 8-888-888-88-88</div>
+            <div>Адрес: г. Москва, Ленинградский пр-т, д. 39</div>
+            <a class="btn-appointment" onclick="app.openModal('Иванов Иван Иванович')">ЗАПИСАТЬСЯ НА ПРИЕМ</a>
+          </div>
+        </div>
+
+        <div class="lawyer-card">
+          <div class="lawyer-num">4.</div>
+          <img src="assets/lawyer_f.png" alt="Николаева" class="lawyer-avatar">
+          <div class="lawyer-info">
+            <div class="lawyer-name">Николаева Анна Викторовна</div>
+            <div>тел. 8-888-888-88-88</div>
+            <div>Адрес: г. Москва, ул. Тверская, д. 12</div>
+            <a class="btn-appointment" onclick="app.openModal('Николаева Анна Викторовна')">ЗАПИСАТЬСЯ НА ПРИЕМ</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Модальное окно записи к адвокату -->
+    <div class="modal-overlay" id="appointmentModal">
+      <div class="modal-box">
+        <h3>Запись на консультацию</h3>
+        <p id="modalLawyerName">Адвокат</p>
+        <p>Ваша заявка и параметры ДТП успешно направлены через платформу <strong>Яндекс.Услуги</strong>. Адвокат перезвонит вам в течение 5 минут.</p>
+        <button class="btn-modal-close" onclick="app.closeModal()">Понятно</button>
+      </div>
+    </div>
+
+    <!-- Модальное окно инструкций -->
+    <div class="modal-overlay" id="infoModal">
+      <div class="modal-box" style="text-align: left; max-width: 360px; max-height: 80vh; overflow-y: auto;">
+        <h3 id="infoModalTitle" style="text-align: center; margin-bottom: 12px;">Инструкция</h3>
+        <div id="infoModalBody" style="font-size: 13px; line-height: 1.5; color: #334e68;">
+          <!-- Текст инструкции -->
+        </div>
+        <div style="text-align: center; margin-top: 16px;">
+          <button class="btn-modal-close" onclick="app.closeInfoModal()">Закрыть</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const app = {
+      history: ['screen-splash'],
+      titles: {
+        'screen-splash': 'АВТО.ЭКСПЕРТ',
+        'screen-classification': 'КЛАССИФИКАЦИЯ ДТП',
+        'screen-vehicle': 'ТИП ТРАНСПОРТНОГО СРЕДСТВА',
+        'screen-road': 'СОСТОЯНИЕ ПРОЕЗЖЕЙ ЧАСТИ',
+        'screen-distance': 'СЛЕД ТОРМОЖЕНИЯ',
+        'screen-result': 'РЕЗУЛЬТАТ',
+        'screen-lawyers': 'РЕЙТИНГ АДВОКАТОВ'
+      },
+      state: {
+        accidentType: 'Столкновение',
+        kt: 1.0,
+        vehicleName: 'Легковой автомобиль',
+        kc: 0.7,
+        roadName: 'Сухой асфальт',
+        distance: '25',
+        speedLimit: 60
+      },
+
+      setParam(key, val) {
+        this.state[key] = val;
+      },
+
+      setVehicle(kt, name) {
+        this.state.kt = kt;
+        this.state.vehicleName = name;
+      },
+
+      setRoad(kc, name) {
+        this.state.kc = kc;
+        this.state.roadName = name;
+      },
+
+      nextScreen(screenId) {
+        const cur = this.history[this.history.length - 1];
+        if (cur !== screenId) {
+          this.history.push(screenId);
+        }
+        this.renderScreen(screenId);
+      },
+
+      prevScreen() {
+        if (this.history.length > 1) {
+          this.history.pop();
+          const prev = this.history[this.history.length - 1];
+          this.renderScreen(prev);
+        }
+      },
+
+      renderScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        const target = document.getElementById(screenId);
+        if (target) target.classList.add('active');
+
+        // Хедер
+        const backBtn = document.getElementById('backBtn');
+        const headerTitle = document.getElementById('headerTitle');
+        headerTitle.innerText = this.titles[screenId] || 'АВТО.ЭКСПЕРТ';
+        backBtn.style.visibility = (this.history.length > 1 && screenId !== 'screen-splash') ? 'visible' : 'hidden';
+      },
+
+      pressKey(k) {
+        let cur = this.state.distance;
+        if (k === 'DEL') {
+          cur = cur.slice(0, -1);
+          if (cur === '') cur = '0';
+        } else {
+          if (cur === '0') cur = k;
+          else if (cur.length < 4) cur += k;
+        }
+        this.state.distance = cur;
+        document.getElementById('distanceVal').innerText = cur;
+      },
+
+      calculate() {
+        const S = parseFloat(this.state.distance) || 0;
+        const kc = this.state.kc;
+        const kt = this.state.kt;
+        const limit = this.state.speedLimit;
+
+        // Формула: V = sqrt(S * kc * 254 / kt)
+        const inside = (S * kc * 254) / kt;
+        const V = Math.round(Math.sqrt(inside) * 10) / 10;
+
+        const verdictBox = document.getElementById('verdictBox');
+        const mathDetails = document.getElementById('mathDetails');
+
+        const isGuilty = V > limit;
+        const delta = Math.round((V - limit) * 10) / 10;
+
+        if (isGuilty) {
+          verdictBox.className = 'verdict-box';
+          verdictBox.innerHTML = `
+            <strong>В данном ДТП, Вы вероятнее всего будете признаны виновным</strong>, так как расчетная скорость движения перед началом торможения (<strong>${V} км/ч</strong>) превышает разрешенную скорость на данном участке (<strong>${limit} км/ч</strong>) на <strong>${delta} км/ч</strong>.<br><br>
+            В Ваших действиях усматриваются нарушения ПДД РФ (п. 10.1, 10.2 ПДД РФ — превышение установленного скоростного режима и несоответствие скорости конкретным дорожным условиям).
+          `;
+        } else {
+          verdictBox.className = 'verdict-box innocent';
+          verdictBox.innerHTML = `
+            <strong>По расчету длины тормозного следа превышения скорости не выявлено.</strong><br><br>
+            Расчетная скорость автомобиля составляла <strong>${V} км/ч</strong> при разрешенных <strong>${limit} км/ч</strong>. Признаков нарушения п. 10.2 ПДД РФ по длине юза не усматривается.<br><br>
+            <em>Примечание:</em> Для окончательного вывода о виновности следствию потребуется оценить момент возникновения опасности и видимость (п. 10.1 ПДД РФ).
+          `;
+        }
+
+        mathDetails.innerHTML = `
+          • Длина тормозного пути (S): <strong>${S} м</strong><br>
+          • Состояние дороги (${this.state.roadName}): <strong>kc = ${kc}</strong><br>
+          • Тип ТС (${this.state.vehicleName}): <strong>kt = ${kt}</strong><br>
+          • Промежуточное значение: √(${S} · ${kc} · 254 / ${kt}) = √(${Math.round(inside * 10)/10})<br>
+          • <strong>Расчетная скорость: ${V} км/ч</strong> (лимит: ${limit} км/ч)
+        `;
+
+        this.nextScreen('screen-result');
+      },
+
+      openModal(name) {
+        document.getElementById('modalLawyerName').innerText = name;
+        document.getElementById('appointmentModal').style.display = 'flex';
+      },
+
+      closeModal() {
+        document.getElementById('appointmentModal').style.display = 'none';
+      },
+
+      openInfoModal(type) {
+        const titleEl = document.getElementById('infoModalTitle');
+        const bodyEl = document.getElementById('infoModalBody');
+
+        if (type === 'project') {
+          titleEl.innerText = 'Инструкция к демо-проекту';
+          bodyEl.innerHTML = `
+            <p style="margin-bottom: 10px;"><strong>Цель проекта:</strong> Сервис для моментального расчета начальной скорости и вероятности виновности водителя в ДТП по криминалистическим формулам МВД и Минюста РФ.</p>
+            
+            <p style="margin-bottom: 8px;"><strong>Как протестировать сценарий:</strong></p>
+            <ol style="padding-left: 18px; margin-bottom: 12px;">
+              <li>Нажмите <strong>«Начать расчет»</strong>.</li>
+              <li>Выберите классификацию ДТП (например, <em>«Столкновение»</em>).</li>
+              <li>Выберите тип ТС — <em>«Легковой автомобиль»</em> (коэффициент kt = 1.0).</li>
+              <li>Выберите покрытие — <em>«Сухой асфальт»</em> (коэффициент kc = 0.7).</li>
+              <li>На клавиатуре введите длину следа юза (например, <strong>25 м</strong>) и установите лимит <strong>60 км/ч</strong>.</li>
+              <li>Нажмите кнопку <strong>«РАСЧЕТ»</strong>.</li>
+              <li>Ознакомьтесь с результатом: расчетная скорость составит <strong>66.7 км/ч</strong> (превышение лимита на 6.7 км/ч, усматривается нарушение п. 10.1/10.2 ПДД).</li>
+              <li>Нажмите <strong>«Показать адвокатов»</strong> и протестируйте запись на консультацию.</li>
+            </ol>
+            <p><strong>Формула:</strong> V = √(S · kc · 254 / kt)</p>
+          `;
+        } else if (type === 'measure') {
+          titleEl.innerText = 'Методика замера следа юза';
+          bodyEl.innerHTML = `
+            <p style="margin-bottom: 10px;"><strong>Инструкция судебного автотехника:</strong></p>
+            <ol style="padding-left: 18px; margin-bottom: 12px;">
+              <li><strong>Определение начала:</strong> Найдите на асфальте точку, где колеса начали блокироваться (начало черной полосы от нагретой резины).</li>
+              <li><strong>Измерение длины:</strong> Рулеткой замерьте расстояние от начала сплошного следа до задних/передних колес неподвижного автомобиля.</li>
+              <li><strong>Если работает АБС:</strong> При прерывистом следе длина суммируется или замеряется общий интервал экстренного торможения.</li>
+              <li><strong>Фотофиксация:</strong> Сделайте фото следа с привязкой к неподвижным ориентирам (столб, дорожный знак, дом).</li>
+              <li>Введите замеренное расстояние в метрах в калькулятор.</li>
+            </ol>
+            <p style="color: #b71c1c; font-weight: 600;">Важно: Не передвигайте автомобиль до прибытия сотрудников ГАИ и фиксации следов на схеме ДТП!</p>
+          `;
+        }
+
+        document.getElementById('infoModal').style.display = 'flex';
+      },
+
+      closeInfoModal() {
+        document.getElementById('infoModal').style.display = 'none';
+      }
+    };
+  </script>
+</body>
+</html>

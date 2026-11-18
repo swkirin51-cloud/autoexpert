@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Яндекс АвтоЭксперт — Навигатор & Go</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com">
+  <link href="https://fonts.googleapis.com/css2?family=YS+Text:wght@400;500;700&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --ya-yellow: #FCE000;
+      --ya-yellow-hover: #EDD300;
+      --ya-red: #FC3F1D;
+      --ya-red-hover: #E03212;
+      --ya-black: #21201F;
+      --ya-dark: #111111;
+      --ya-gray-bg: #F5F6F7;
+      --ya-card-bg: #FFFFFF;
+      --ya-border: #E8E9EB;
+      --ya-text-main: #21201F;
+      --ya-text-muted: #7B8087;
+      --ya-green: #00B341;
+      --ya-blue: #0070F3;
+      --radius-sheet: 24px;
+      --radius-card: 16px;
+      --radius-chip: 20px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'YS Text', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: #0F1218;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      color: var(--ya-text-main);
+    }
+
+    /* Верхние переключатели для демонстрации на ПК */
+    .top-bar-demo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .demo-pill {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: background 0.2s;
+    }
+    .demo-pill:hover {
+      background: rgba(255, 255, 255, 0.22);
+    }
+
+    /* Рамка смартфона в стиле флагманов */
+    .device-container {
+      width: 100%;
+      max-width: 412px;
+      height: 860px;
+      background: #EBF0F5;
+      border-radius: 44px;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.6), 0 0 0 10px #1E222B, 0 0 0 12px #333844;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .device-container.tablet-mode {
+      max-width: 580px;
+      height: 92vh;
+      border-radius: 24px;
+    }
+
+    @media (max-width: 460px) {
+      body {
+        padding: 0;
+        background: #fff;
+      }
+      .top-bar-demo {
+        display: none;
+      }
+      .device-container {
+        max-width: 100%;
+        height: 100vh;
+        border-radius: 0;
+        box-shadow: none;
+      }
+    }
+
+    /* Фоновая интерактивная стилизованная карта Яндекс Карт */
+    .map-canvas-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 48%;
+      background: #E8ECE9;
+      overflow: hidden;
+      z-index: 1;
+    }
+    .map-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Плавающие кнопки управления картой (как в Яндекс Картах) */
+    .map-fab-stack {
+      position: absolute;
+      top: 56px;
+      right: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 10;
+    }
+    .map-fab {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: #FFFFFF;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ya-black);
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .map-fab:active {
+      transform: scale(0.92);
+    }
+    .traffic-pill {
+      background: #00B341;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 8px;
+    }
+
+    /* Маркер места происшествия на карте */
+    .crash-pin {
+      position: absolute;
+      top: 42%;
+      left: 48%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 5;
+    }
+    .crash-pin-pulse {
+      position: absolute;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(252, 63, 29, 0.25);
+      animation: pulseAnim 2s infinite;
+    }
+    @keyframes pulseAnim {
+      0% { transform: scale(0.6); opacity: 1; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+    .crash-pin-icon {
+      width: 42px;
+      height: 42px;
+      background: var(--ya-red);
+      border: 3px solid #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 18px;
+      box-shadow: 0 4px 12px rgba(252, 63, 29, 0.4);
+      position: relative;
+      z-index: 2;
+    }
+    .crash-pin-label {
+      background: rgba(17, 17, 17, 0.85);
+      backdrop-filter: blur(4px);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 10px;
+      margin-top: 4px;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+
+    /* Статус-бар смартфона */
+    .status-bar-ya {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ya-black);
+      z-index: 20;
+    }
+
+    /* Выдвижная шторка (Bottom Sheet в стиле Яндекс Go) */
+    .bottom-sheet {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 68%;
+      background: var(--ya-card-bg);
+      border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+      box-shadow: 0 -8px 30px rgba(0,0,0,0.12);
+      display: flex;
+      flex-direction: column;
+      z-index: 15;
+      transition: height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .bottom-sheet.expanded {
+      height: 90%;
+    }
+
+    /* Хэндл шторки (серая полоска по центру) */
+    .sheet-handle-bar {
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: grab;
+      flex-shrink: 0;
+    }
+    .sheet-handle {
+      width: 40px;
+      height: 4px;
+      background: #D9DADC;
+      border-radius: 2px;
+    }
+
+    /* Заголовок шторки */
+    .sheet-header {
+      padding: 0 18px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--ya-border);
+      flex-shrink: 0;
+    }
+    .brand-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .ya-logo-badge {
+      width: 28px;
+      height: 28px;
+      background: var(--ya-red);
+      color: #fff;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 15px;
+    }
+    .brand-text {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--ya-black);
+      letter-spacing: -0.3px;
+    }
+    .brand-service-tag {
+      background: #F2F3F5;
+      color: var(--ya-text-muted);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 6px;
+    }
+    .btn-sheet-back {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #F2F3F5;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--ya-black);
+      transition: background 0.15s;
+    }
+    .btn-sheet-back:hover {
+      background: #E4E5E8;
+    }
+
+    /* Контейнер шагов */
+    .sheet-scroll-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px 18px 24px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .step-view {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      animation: fadeInStep 0.2s ease-out;
+    }
+    .step-view.active {
+      display: flex;
+    }
+    @keyframes fadeInStep {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .step-headline {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--ya-black);
+      letter-spacing: -0.4px;
+      margin-bottom: 4px;
+    }
+    .step-subline {
+      font-size: 13px;
+      color: var(--ya-text-muted);
+      margin-bottom: 16px;
+      line-height: 1.4;
+    }
+
+    /* СПИСОК ТАРИФОВ / ТИПОВ ТС (КАК В ЯНДЕКС GO) */
+    .tariff-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .tariff-item {
+      background: var(--ya-gray-bg);
+      border-radius: var(--radius-card);
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.15s ease;
+    }
+    .tariff-item:hover {
+      background: #ECEEF2;
+    }
+    .tariff-item.selected {
+      background: #FFFFFF;
+      border-color: var(--ya-black);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+    }
+    .tariff-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .tariff-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: #FFFFFF;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+    }
+    .tariff-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--ya-black);
+    }
+    .tariff-subtitle {
+      font-size: 12px;
+      color: var(--ya-text-muted);
+      margin-top: 2px;
+    }
+    .tariff-coeff-badge {
+      background: #E4E7EB;
+      color: var(--ya-black);
+      font-size: 12px;
+      font-weight: 800;
+      padding: 4px 9px;
+      border-radius: 8px;
+    }
+    .tariff-item.selected .tariff-coeff-badge {
+      background: var(--ya-yellow);
+      color: #000;
+    }
+
+    /* ЧИПЫ ДОРОЖНОГО ПОКРЫТИЯ (ГОРИЗОНТАЛЬНЫЙ СКРОЛЛ) */
+    .road-chips-scroll {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .road-chip-card {
+      background: var(--ya-gray-bg);
+      border-radius: 14px;
+      padding: 12px 14px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .road-chip-card:hover {
+      background: #ECEEF2;
+    }
+    .road-chip-card.selected {
+      background: #FFFFFF;
+      border-color: var(--ya-black);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+    .road-chip-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .road-chip-emoji {
+      font-size: 20px;
+    }
+    .road-chip-badge {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--ya-blue);
+      background: #EBF4FF;
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+    .road-chip-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--ya-black);
+    }
+
+    /* СПИДОМЕТР И ВВОД ДИСТАНЦИИ В СТИЛЕ ЯНДЕКС НАВИГАТОРА */
+    .speedo-card {
+      background: #FFFFFF;
+      border-radius: var(--radius-card);
+      border: 1px solid var(--ya-border);
+      padding: 18px;
+      margin-bottom: 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .speedo-meter-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      width: 100%;
+      margin-bottom: 16px;
+    }
+    /* Виджет знака скорости как в Навигаторе */
+    .nav-speed-limit-sign {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: #FFFFFF;
+      border: 6px solid #E52E2E;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 900;
+      color: #000;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.12);
+      flex-shrink: 0;
+    }
+    .nav-live-speed-box {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .nav-live-speed-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ya-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .nav-live-speed-val {
+      font-size: 38px;
+      font-weight: 900;
+      color: var(--ya-black);
+      line-height: 1;
+      letter-spacing: -1px;
+    }
+    .nav-live-speed-val.over-limit {
+      color: var(--ya-red);
+    }
+
+    .distance-range-wrap {
+      width: 100%;
+      margin: 8px 0;
+    }
+    .ya-range-slider {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #E4E7EB;
+      outline: none;
+      -webkit-appearance: none;
+    }
+    .ya-range-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: var(--ya-yellow);
+      border: 3px solid #111;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    .quick-dist-chips {
+      display: flex;
+      gap: 6px;
+      width: 100%;
+      justify-content: space-between;
+      margin-top: 8px;
+    }
+    .quick-chip {
+      background: var(--ya-gray-bg);
+      border: none;
+      border-radius: 12px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ya-black);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .quick-chip:hover {
+      background: #E2E5E9;
+    }
+    .quick-chip.active {
+      background: var(--ya-black);
+      color: #fff;
+    }
+
+    /* ФИРМЕННАЯ ЖЕЛТАЯ КНОПКА ЯНДЕКС GO */
+    .btn-ya-main {
+      width: 100%;
+      background: var(--ya-yellow);
+      color: #000000;
+      border: none;
+      padding: 16px;
+      border-radius: var(--radius-card);
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: auto;
+      box-shadow: 0 4px 14px rgba(252, 224, 0, 0.4);
+      transition: all 0.15s;
+    }
+    .btn-ya-main:hover {
+      background: var(--ya-yellow-hover);
+    }
+    .btn-ya-main:active {
+      transform: scale(0.98);
+    }
+
+    .btn-ya-red {
+      background: var(--ya-red);
+      color: #ffffff;
+      box-shadow: 0 4px 14px rgba(252, 63, 29, 0.35);
+    }
+    .btn-ya-red:hover {
+      background: var(--ya-red-hover);
+    }
+
+    /* ЭКРАН ВЕРДИКТА */
+    .verdict-card-ya {
+      background: #FDF2F0;
+      border: 1.5px solid #FCD4CF;
+      border-radius: var(--radius-card);
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .verdict-card-ya.ok {
+      background: #F0FBF4;
+      border-color: #C8F3D5;
+    }
+    .verdict-pill-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      background: #FC3F1D;
+      color: #fff;
+      margin-bottom: 10px;
+    }
+    .verdict-card-ya.ok .verdict-pill-status {
+      background: #00B341;
+    }
+    .verdict-main-text {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--ya-black);
+      line-height: 1.35;
+      margin-bottom: 6px;
+    }
+    .verdict-legal-note {
+      font-size: 12px;
+      color: #555A61;
+      line-height: 1.45;
+    }
+
+    .formula-yandex-box {
+      background: #F5F6F7;
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--ya-black);
+      margin-bottom: 14px;
+    }
+    .formula-yandex-box code {
+      font-family: monospace;
+      font-weight: 700;
+      color: #0070F3;
+      font-size: 13px;
+    }
+
+    /* АДВОКАТЫ В СТИЛЕ ЯНДЕКС УСЛУГ */
+    .lawyer-item-ya {
+      background: #FFFFFF;
+      border: 1px solid var(--ya-border);
+      border-radius: var(--radius-card);
+      padding: 12px;
+      display: flex;
+      gap: 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+    .lawyer-photo-round {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .lawyer-body {
+      flex: 1;
+    }
+    .lawyer-name-ya {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--ya-black);
+    }
+    .lawyer-tagline {
+      font-size: 11px;
+      color: var(--ya-text-muted);
+      margin: 2px 0 4px;
+    }
+    .lawyer-score {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #000;
+      background: var(--ya-yellow);
+      padding: 2px 6px;
+      border-radius: 6px;
+    }
+    .btn-consult-ya {
+      background: #F2F3F5;
+      border: none;
+      border-radius: 10px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--ya-black);
+      cursor: pointer;
+      margin-top: 8px;
+      transition: background 0.15s;
+    }
+    .btn-consult-ya:hover {
+      background: #E4E5E8;
+    }
+
+    /* МОДАЛЬНОЕ ОКНО */
+    .ya-modal {
+      display: none;
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 100;
+    }
+    .ya-modal-card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 22px;
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+    }
+  
+    /* Telegram Mini App & Modern Styles */
+    body.in-telegram,
+    body.is-embedded {
+      background: #EBF0F5 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      width: 100vw !important;
+      height: 100vh !important;
+      min-height: 100vh !important;
+      display: block !important;
+      overflow: hidden !important;
+    }
+    body.in-telegram .top-bar-demo,
+    body.is-embedded .top-bar-demo {
+      display: none !important;
+    }
+    body.in-telegram .device-container,
+    body.is-embedded .device-container {
+      width: 100% !important;
+      max-width: 100% !important;
+      height: 100vh !important;
+      border: none !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+    }
+
+    .expert-nav-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    .expert-tab-btn {
+      flex: 1;
+      padding: 9px 6px;
+      border-radius: 12px;
+      border: 1.5px solid var(--ya-border);
+      background: #FFFFFF;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--ya-text-muted);
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+    }
+    .expert-tab-btn.active {
+      background: var(--ya-black);
+      color: #FFFFFF;
+      border-color: var(--ya-black);
+    }
+
+    .mvd-card {
+      background: #F8F9FA;
+      border: 1.5px solid #E5E7EB;
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .mvd-param-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    .mvd-verdict-banner {
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 13px;
+      font-weight: 700;
+      line-height: 1.4;
+      margin-top: 10px;
+    }
+    .mvd-verdict-banner.danger {
+      background: #FFECE8;
+      color: #C02000;
+      border: 1.5px solid #FFC9BE;
+    }
+    .mvd-verdict-banner.success {
+      background: #E8F9EE;
+      color: #0E7835;
+      border: 1.5px solid #B7ECC8;
+    }
+    .toast-msg {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.85);
+      color: white;
+      padding: 10px 18px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .toast-msg.show {
+      opacity: 1;
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- Верхняя строка для тестирования на ПК -->
+  <div class="top-bar-demo">
+    <button class="demo-pill" onclick="toggleDeviceMode()">📱 Формат: Смартфон / Планшет</button>
+  </div>
+
+  <div class="device-container" id="deviceContainer">
+
+    <!-- Верхний статус-бар -->
+    <div class="status-bar-ya">
+      <span>12:30</span>
+      <span>Яндекс Карты</span>
+      <span>4G 98%</span>
+    </div>
+
+    <!-- 1. Фоновый слой Яндекс Карт с дорожной разметкой и маршрутом -->
+    <div class="map-canvas-layer">
+      <svg class="map-svg" viewBox="0 0 400 360" preserveAspectRatio="none">
+        <!-- Фон парков и кварталов -->
+        <rect width="400" height="360" fill="#EBF0E9"/>
+        <rect x="20" y="30" width="80" height="90" rx="8" fill="#DFE6DC"/>
+        <rect x="280" y="40" width="90" height="110" rx="8" fill="#DFE6DC"/>
+        <rect x="30" y="190" width="100" height="120" rx="8" fill="#DFE6DC"/>
+
+        <!-- Река / водоем -->
+        <path d="M-20,300 C80,260 220,320 420,270 L420,360 L-20,360 Z" fill="#C5DCE8"/>
+
+        <!-- Дорожная сетка (улицы) -->
+        <path d="M-10,140 L410,140" stroke="#FFFFFF" stroke-width="26"/>
+        <path d="M-10,140 L410,140" stroke="#FFEBA3" stroke-width="18"/>
+        <!-- Разметка дороги -->
+        <path d="M-10,140 L410,140" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="8 8"/>
+
+        <!-- Поперечные улицы -->
+        <path d="M160,-10 L160,370" stroke="#FFFFFF" stroke-width="22"/>
+        <path d="M160,-10 L160,370" stroke="#FFF1B8" stroke-width="14"/>
+
+        <!-- Линия тормозного следа шин (черный юз на полосе) -->
+        <path d="M110,136 L190,136" stroke="#222222" stroke-width="4" stroke-linecap="round"/>
+        <path d="M110,144 L190,144" stroke="#222222" stroke-width="4" stroke-linecap="round"/>
+
+        <!-- Названия улиц -->
+        <text x="210" y="132" font-size="9" font-weight="700" fill="#757E8A">Ленинградский проспект</text>
+        <text x="168" y="70" font-size="8" font-weight="700" fill="#757E8A" transform="rotate(90 168,70)">ул. Правды</text>
+      </svg>
+
+      <!-- Пульсирующая метка ДТП на карте -->
+      <div class="crash-pin">
+        <div class="crash-pin-pulse"></div>
+        <div class="crash-pin-icon">⚠️</div>
+        <div class="crash-pin-label">Место ДТП: юз 25 м</div>
+      </div>
+
+      <!-- Кнопки управления картой в стиле Яндекс Карт -->
+      <div class="map-fab-stack">
+        <button class="map-fab" title="Пробки">
+          <span class="traffic-pill">4</span>
+        </button>
+        <button class="map-fab" title="Мое местоположение">🎯</button>
+        <button class="map-fab" title="Слои">🗺️</button>
+      </div>
+    </div>
+
+    <!-- 2. Фирменная нижняя шторка (Bottom Sheet в стиле Яндекс Go) -->
+    <div class="bottom-sheet" id="bottomSheet">
+      <div class="sheet-handle-bar" onclick="toggleSheetSize()">
+        <div class="sheet-handle"></div>
+      </div>
+
+      <div class="sheet-header">
+        <div class="brand-title-wrap">
+          <div class="ya-logo-badge">Я</div>
+          <div>
+            <div class="brand-text">АвтоЭксперт</div>
+            <div style="font-size: 10px; color: var(--ya-text-muted); font-weight: 600;">Навигатор & Экспертиза МВД</div>
+          </div>
+        </div>
+
+        <button class="btn-sheet-back" id="btnBack" onclick="goBack()" style="visibility: hidden;">
+          ←
+        </button>
+      </div>
+
+      <!-- Содержимое шторки -->
+      <div class="sheet-scroll-body">
+
+        <!-- ============ ШАГ 1: СТАРТ ============ -->
+        <div class="step-view active" id="view-start">
+          <h2 class="step-headline">Анализ ДТП по следу торможения</h2>
+          <p class="step-subline">
+            Определение начальной скорости автомобиля и вероятности вины по методике Минюста РФ
+          </p>
+
+          <div style="background: var(--ya-gray-bg); border-radius: 14px; padding: 12px; margin-bottom: 14px;">
+            <div style="font-size: 12px; font-weight: 700; color: var(--ya-black); margin-bottom: 4px;">📍 Координаты зафиксированы</div>
+            <div style="font-size: 11px; color: var(--ya-text-muted);">Москва, Ленинградский пр-т, д. 39 (участок 60 км/ч)</div>
+          </div>
+
+          <div class="tariff-list" style="margin-bottom: 16px;">
+            <div class="tariff-item selected" onclick="setAccidentType('Столкновение', this)">
+              <div class="tariff-left">
+                <div class="tariff-avatar">💥</div>
+                <div>
+                  <div class="tariff-title">Столкновение двух ТС</div>
+                  <div class="tariff-subtitle">Попутное или перекрестное</div>
+                </div>
+              </div>
+              <span>›</span>
+            </div>
+
+            <div class="tariff-item" onclick="setAccidentType('Наезд на пешехода', this)">
+              <div class="tariff-left">
+                <div class="tariff-avatar">🚶</div>
+                <div>
+                  <div class="tariff-title">Наезд на пешехода</div>
+                  <div class="tariff-subtitle">В зоне видимости фар</div>
+                </div>
+              </div>
+              <span>›</span>
+            </div>
+          </div>
+
+          <button class="btn-ya-main" onclick="goToView('view-vehicle')">
+            <span>Выбрать транспорт и условия</span>
+            <span>→</span>
+          </button>
+        </div>
+
+        <!-- ============ ШАГ 2: ВЫБОР ТС (ТАРИФЫ GO) ============ -->
+        <div class="step-view" id="view-vehicle">
+          <h2 class="step-headline">Тип транспортного средства</h2>
+          <p class="step-subline">Коэффициент эффективности тормозов автомобиля (kt):</p>
+
+          <div class="tariff-list" style="margin-bottom: 16px;">
+            <div class="tariff-item selected" onclick="selectVehicle(1.0, 'Легковой автомобиль', this)">
+              <div class="tariff-left">
+                <div class="tariff-avatar">🚗</div>
+                <div>
+                  <div class="tariff-title">Легковой (Эконом / Комфорт)</div>
+                  <div class="tariff-subtitle">Масса до 3.5 тонн</div>
+                </div>
+              </div>
+              <span class="tariff-coeff-badge">kt = 1.0</span>
+            </div>
+
+            <div class="tariff-item" onclick="selectVehicle(1.0, 'Внедорожник / SUV', this)">
+              <div class="tariff-left">
+                <div class="tariff-avatar">🚙</div>
+                <div>
+                  <div class="tariff-title">Кроссовер / Внедорожник</div>
+                  <div class="tariff-subtitle">Полный привод, ABS</div>
+                </div>
+              </div>
+              <span class="tariff-coeff-badge">kt = 1.0</span>
+            </div>
+
+            <div class="tariff-item" onclick="selectVehicle(1.2, 'Грузовой автомобиль', this)">
+              <div class="tariff-left">
+                <div class="tariff-avatar">🚚</div>
+                <div>
+                  <div class="tariff-title">Яндекс Грузовой (тяжелый)</div>
+                  <div class="tariff-subtitle">Масса более 3.5 тонн</div>
+                </div>
+              </div>
+              <span class="tariff-coeff-badge">kt = 1.2</span>
+            </div>
+          </div>
+
+          <button class="btn-ya-main" onclick="goToView('view-road')">
+            <span>Далее: дорожное покрытие</span>
+            <span>→</span>
+          </button>
+        </div>
+
+        <!-- ============ ШАГ 3: ПОКРЫТИЕ ДОРОГИ ============ -->
+        <div class="step-view" id="view-road">
+          <h2 class="step-headline">Состояние дорожного полотна</h2>
+          <p class="step-subline">Коэффициент сцепления шин с покрытием (kc):</p>
+
+          <div class="road-chips-scroll">
+            <div class="road-chip-card selected" onclick="selectRoad(0.7, 'Сухой асфальт', this)">
+              <div class="road-chip-top">
+                <span class="road-chip-emoji">☀️</span>
+                <span class="road-chip-badge">kc = 0.7</span>
+              </div>
+              <div class="road-chip-name">Сухой асфальт</div>
+            </div>
+
+            <div class="road-chip-card" onclick="selectRoad(0.4, 'Мокрый асфальт', this)">
+              <div class="road-chip-top">
+                <span class="road-chip-emoji">🌧️</span>
+                <span class="road-chip-badge">kc = 0.4</span>
+              </div>
+              <div class="road-chip-name">Мокрый асфальт</div>
+            </div>
+
+            <div class="road-chip-card" onclick="selectRoad(0.2, 'Укатанный снег', this)">
+              <div class="road-chip-top">
+                <span class="road-chip-emoji">❄️</span>
+                <span class="road-chip-badge">kc = 0.2</span>
+              </div>
+              <div class="road-chip-name">Укатанный снег</div>
+            </div>
+
+            <div class="road-chip-card" onclick="selectRoad(0.1, 'Обледенение', this)">
+              <div class="road-chip-top">
+                <span class="road-chip-emoji">🧊</span>
+                <span class="road-chip-badge">kc = 0.1</span>
+              </div>
+              <div class="road-chip-name">Гололед / Лед</div>
+            </div>
+          </div>
+
+          <button class="btn-ya-main" onclick="goToView('view-distance')">
+            <span>Далее: след торможения</span>
+            <span>→</span>
+          </button>
+        </div>
+
+        <!-- ============ ШАГ 4: ЗАМЕР ЮЗА СО СПИДОМЕТРОМ НАВИГАТОРА ============ -->
+        <div class="step-view" id="view-distance">
+          <h2 class="step-headline">Длина зафиксированного юза</h2>
+          <p class="step-subline">След колес от начала блокировки до полной остановки (S):</p>
+
+          <div class="speedo-card">
+            <div class="speedo-meter-row">
+              <!-- Знак лимита скорости как в Яндекс Навигаторе -->
+              <div class="nav-speed-limit-sign" id="signLimitDisplay">60</div>
+
+              <div class="nav-live-speed-box">
+                <div class="nav-live-speed-title">Скорость в момент юза</div>
+                <div class="nav-live-speed-val over-limit" id="liveSpeedDisplay">66.7 <span style="font-size: 16px; font-weight: 700;">км/ч</span></div>
+              </div>
+            </div>
+
+            <div style="font-size: 18px; font-weight: 800; color: var(--ya-black); margin-bottom: 2px;">
+              <span id="distValText">25</span> метров следа
+            </div>
+
+            <div class="distance-range-wrap">
+              <input type="range" class="ya-range-slider" min="5" max="80" value="25" id="sliderDist" oninput="updateDistance(this.value)">
+            </div>
+
+            <div class="quick-dist-chips">
+              <button class="quick-chip" onclick="setQuickDist(15)">15 м</button>
+              <button class="quick-chip active" onclick="setQuickDist(25)">25 м</button>
+              <button class="quick-chip" onclick="setQuickDist(35)">35 м</button>
+              <button class="quick-chip" onclick="setQuickDist(50)">50 м</button>
+            </div>
+          </div>
+
+          <button class="btn-ya-main btn-ya-red" onclick="showVerdict()">
+            <span>Получить вердикт виновности</span>
+            <span>⚡</span>
+          </button>
+        </div>
+
+        <!-- ============ ШАГ 5: ВЕРДИКТ ============ -->
+        <div class="step-view" id="view-verdict">
+          <h2 class="step-headline">Заключение экспертизы</h2>
+          <p class="step-subline">Предварительная правовая квалификация события:</p>
+
+          <div class="verdict-card-ya" id="verdictBoxYa">
+            <div class="verdict-pill-status" id="verdictPill">⚠️ Превышение скорости</div>
+            <div class="verdict-main-text" id="verdictMainText">
+              Расчетная начальная скорость: 66.7 км/ч
+            </div>
+            <div class="verdict-legal-note" id="verdictNoteText">
+              На данном участке действует ограничение 60 км/ч. Скорость движения превышена на 6.7 км/ч. В действиях водителя усматриваются признаки нарушения п. 10.1 и 10.2 ПДД РФ (несоответствие скорости условиям движения). Высокая вероятность признания вины в суде.
+            </div>
+          </div>
+
+          <div class="formula-yandex-box">
+            <strong>Формула Минюста РФ:</strong><br>
+            <code>V = √(S · kc · 254 / kt)</code><br>
+            <span id="mathSummaryText">√(25 · 0.7 · 254 / 1.0) = 66.7 км/ч</span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 12px;">
+            <button class="btn-ya-main" style="background: #21201F; color: #FFF;" onclick="goToView('view-mvd')">
+              <span>⚖️ Экспертиза МВД: ст. 264 УК РФ</span>
+              <span>→</span>
+            </button>
+            <button class="btn-ya-main" style="background: #FFF; border: 1.5px solid var(--ya-border); color: #21201F;" onclick="goToView('view-sodfu')">
+              <span>🛡️ Трасология СОДФУ (спор по ОСАГО)</span>
+              <span>→</span>
+            </button>
+            <button class="btn-ya-main" style="background: #2481CC; color: #FFF;" onclick="sendVerdictToTelegram()">
+              <span>📤 Отправить расчет в Telegram</span>
+              <span>↗</span>
+            </button>
+            <button class="btn-ya-main" onclick="goToView('view-lawyers')">
+              <span>Адвокаты по ДТП в Яндекс Услугах</span>
+              <span>→</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ============ ШАГ 6: КАТАЛОГ АДВОКАТОВ В ЯНДЕКС УСЛУГАХ ============ -->
+        
+        <!-- ============ ШАГ МИНИСТЕРСТВА ВНУТРЕННИХ ДЕЛ: СТ. 264 УК РФ ============ -->
+        <div class="step-view" id="view-mvd">
+          <h2 class="step-headline">Методика ЭКЦ МВД (2010 г.)</h2>
+          <p class="step-subline">Определение технической возможности предотвращения наезда (п. 10.1 ПДД РФ):</p>
+
+          <div class="mvd-card">
+            <div class="mvd-param-row">
+              <span><strong>Скорость перед торможением:</strong></span>
+              <span id="mvdVaDisplay" style="font-weight: 800; font-size: 15px; color: var(--ya-black);">66.7 км/ч</span>
+            </div>
+            <div class="mvd-param-row">
+              <span>Время реакции водителя t₁:</span>
+              <span id="mvdT1Val" style="font-weight: 700;">0.8 с (день/ясно)</span>
+            </div>
+            <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+              <button class="tariff-chip-btn active" id="btnT1Day" onclick="setT1(0.8, 'день/ясно', this)">День (0.8с)</button>
+              <button class="tariff-chip-btn" id="btnT1City" onclick="setT1(1.0, 'город/поток', this)">Поток (1.0с)</button>
+              <button class="tariff-chip-btn" id="btnT1Night" onclick="setT1(1.4, 'ночь/неожиданно', this)">Ночь (1.4с)</button>
+            </div>
+
+            <div class="mvd-param-row">
+              <span>Замедление автомобиля ja:</span>
+              <span id="mvdJaVal" style="font-weight: 700;">6.87 м/с²</span>
+            </div>
+
+            <div style="margin-top: 10px;">
+              <div class="mvd-param-row">
+                <span>Удаление пешехода Sa (момент опасности):</span>
+                <span id="mvdSaVal" style="font-weight: 800; color: #0070F3;">35 м</span>
+              </div>
+              <input type="range" min="10" max="80" value="35" step="1" class="brake-slider" id="mvdSaSlider" oninput="updateMvdSa(this.value)">
+            </div>
+
+            <div class="formula-yandex-box" style="margin-top: 10px;">
+              <strong>Остановочный путь S₀:</strong><br>
+              <code>S₀ = (t₁ + t₂ + 0.5·t₃) · (Va/3.6) + Va² / (26·ja)</code><br>
+              <span id="mvdMathFormula">S₀ = (0.8 + 0.1 + 0.15) · 18.5 + 4449 / (26 · 6.87) = <strong>44.3 м</strong></span>
+            </div>
+
+            <div id="mvdVerdictBanner" class="mvd-verdict-banner danger">
+              ⚠️ ВОДИТЕЛЬ РАСПОЛАГАЛ ТЕХНИЧЕСКОЙ ВОЗМОЖНОСТЬЮ<br>
+              <span style="font-size: 11px; font-weight: normal;">Остановочный путь S₀ (44.3 м) превышает удаление пешехода Sa (35 м). Однако следствие проверит, не превышена ли скорость.</span>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-ya-main" style="background: #21201F; color: #FFF; flex: 1;" onclick="goToView('view-verdict')">← К вердикту</button>
+            <button class="btn-ya-main" style="background: #2481CC; color: #FFF; flex: 1;" onclick="sendVerdictToTelegram()">📤 В Telegram</button>
+          </div>
+        </div>
+
+        <!-- ============ ШАГ ТРАСОЛОГИИ: АНО «СОДФУ» ============ -->
+        <div class="step-view" id="view-sodfu">
+          <h2 class="step-headline">Методика АНО «СОДФУ» (Звягин, 2021)</h2>
+          <p class="step-subline">Трасологическая диагностика и динамический «клевок» подвески:</p>
+
+          <div class="mvd-card">
+            <div style="font-size: 13px; font-weight: 700; margin-bottom: 6px; color: #FC3F1D;">
+              📌 Как страховые отказывают в выплате:
+            </div>
+            <p style="font-size: 12px; color: #555; line-height: 1.4; margin-bottom: 12px;">
+              Эксперты страховщиков сопоставляют автомобили на ровной площадке в статике и заявляют: <em>«Высота повреждений бампера не совпадает на 40 мм, отказ по ОСАГО/КАСКО»</em>.
+            </p>
+
+            <div style="background: #FFFFFF; border-radius: 12px; padding: 10px; border: 1px solid #E5E7EB; margin-bottom: 10px;">
+              <div class="mvd-param-row">
+                <span>Просадка передней оси («клевок»):</span>
+                <span id="sodfuFrontDip" style="font-weight: 800; color: #FC3F1D;">-48 мм</span>
+              </div>
+              <div class="mvd-param-row">
+                <span>Подъем задней оси:</span>
+                <span id="sodfuRearRise" style="font-weight: 800; color: #00B341;">+32 мм</span>
+              </div>
+              <div class="mvd-param-row">
+                <span>Смещение высоты контакта:</span>
+                <span id="sodfuTotalShift" style="font-weight: 800; color: #21201F;">35–65 мм</span>
+              </div>
+            </div>
+
+            <div class="mvd-verdict-banner success">
+              ⚖️ ЭКСПЕРТНОЕ ОПРОВЕРЖЕНИЕ ДЛЯ СУДА И СОДФУ:<br>
+              <span style="font-size: 11px; font-weight: normal;">При замедлении j = <span id="sodfuJText">6.87</span> м/с² динамический клевок полностью объясняет высотную разницу контакта. Повреждения образованы при заявленных обстоятельствах!</span>
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 8px;">
+            <button class="btn-ya-main" style="background: #21201F; color: #FFF; flex: 1;" onclick="goToView('view-verdict')">← К вердикту</button>
+            <button class="btn-ya-main" style="background: #2481CC; color: #FFF; flex: 1;" onclick="sendVerdictToTelegram()">📤 В Telegram</button>
+          </div>
+        </div>
+
+        <div class="step-view" id="view-lawyers">
+          <h2 class="step-headline">Рекомендованные автоадвокаты</h2>
+          <p class="step-subline">Специалисты по ДТП в районе происшествия:</p>
+
+          <!-- Адвокат 1 -->
+          <div class="lawyer-item-ya">
+            <img src="assets/lawyer_m.png" alt="Петров" class="lawyer-photo-round">
+            <div class="lawyer-body">
+              <div class="lawyer-name-ya">Петров Петр Петрович</div>
+              <div class="lawyer-tagline">Следователь МВД в отставке • 18 лет стажа</div>
+              <div>
+                <span class="lawyer-score">★ 4.96</span>
+                <span style="font-size: 11px; color: var(--ya-text-muted); margin-left: 6px;">54 отзыва</span>
+              </div>
+              <button class="btn-consult-ya" onclick="openModal('Петров Петр Петрович')">Записаться на разбор</button>
+            </div>
+          </div>
+
+          <!-- Адвокат 2 -->
+          <div class="lawyer-item-ya">
+            <img src="assets/lawyer_f.png" alt="Светлая" class="lawyer-photo-round">
+            <div class="lawyer-body">
+              <div class="lawyer-name-ya">Светлая Светлана Сергеевна</div>
+              <div class="lawyer-tagline">Автотехнический судебный эксперт • 12 лет</div>
+              <div>
+                <span class="lawyer-score">★ 4.98</span>
+                <span style="font-size: 11px; color: var(--ya-text-muted); margin-left: 6px;">82 отзыва</span>
+              </div>
+              <button class="btn-consult-ya" onclick="openModal('Светлая Светлана Сергеевна')">Записаться на разбор</button>
+            </div>
+          </div>
+
+          <button class="btn-ya-main" style="background: #F2F3F5; margin-top: 10px;" onclick="goToView('view-start')">
+            <span>Новый расчет</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Модальное окно подтверждения записи -->
+    <div class="ya-modal" id="modalBooking">
+      <div class="ya-modal-card">
+        <div style="font-size: 36px; margin-bottom: 10px;">✅</div>
+        <h3 style="font-size: 18px; font-weight: 800; margin-bottom: 8px;">Заявка принята</h3>
+        <p id="modalDescText" style="font-size: 13px; color: var(--ya-text-muted); line-height: 1.4; margin-bottom: 18px;">
+          Адвокат свяжется с вами в течение 5 минут для консультации по материалам ДТП.
+        </p>
+        <button class="btn-ya-main" onclick="closeModal()">Отлично</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Переключение десктопного размера
+    function toggleDeviceMode() {
+      document.getElementById('deviceContainer').classList.toggle('tablet-mode');
+    }
+
+    // Состояние приложения
+    const state = {
+      history: ['view-start'],
+      accidentType: 'Столкновение',
+      kt: 1.0,
+      vehicleName: 'Легковой автомобиль',
+      kc: 0.7,
+      roadName: 'Сухой асфальт',
+      distance: 25,
+      speedLimit: 60,
+      calculatedSpeed: 66.7
+    };
+
+    function goToView(viewId) {
+      if (state.history[state.history.length - 1] !== viewId) {
+        state.history.push(viewId);
+      }
+      renderView(viewId);
+    }
+
+    function goBack() {
+      if (state.history.length > 1) {
+        state.history.pop();
+        renderView(state.history[state.history.length - 1]);
+      }
+    }
+
+    function renderView(viewId) {
+      document.querySelectorAll('.step-view').forEach(v => v.classList.remove('active'));
+      const target = document.getElementById(viewId);
+      if (target) target.classList.add('active');
+
+      const btnBack = document.getElementById('btnBack');
+      btnBack.style.visibility = (viewId !== 'view-start') ? 'visible' : 'hidden';
+
+      // Разворачиваем шторку выше на экранах ввода и вердикта
+      const sheet = document.getElementById('bottomSheet');
+      if (viewId === 'view-distance' || viewId === 'view-verdict' || viewId === 'view-lawyers' || viewId === 'view-mvd' || viewId === 'view-sodfu') {
+        sheet.classList.add('expanded');
+      } else {
+        sheet.classList.remove('expanded');
+      }
+
+      if (viewId === 'view-distance' || viewId === 'view-verdict') {
+        recomputeSpeed();
+      }
+      if (viewId === 'view-mvd' || viewId === 'view-sodfu') {
+        computeMvd();
+      }
+    }
+
+    function toggleSheetSize() {
+      document.getElementById('bottomSheet').classList.toggle('expanded');
+    }
+
+    function setAccidentType(type, el) {
+      state.accidentType = type;
+      el.closest('.tariff-list').querySelectorAll('.tariff-item').forEach(i => i.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+
+    function selectVehicle(kt, name, el) {
+      state.kt = kt;
+      state.vehicleName = name;
+      el.closest('.tariff-list').querySelectorAll('.tariff-item').forEach(i => i.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+
+    function selectRoad(kc, name, el) {
+      state.kc = kc;
+      state.roadName = name;
+      el.closest('.road-chips-scroll').querySelectorAll('.road-chip-card').forEach(i => i.classList.remove('selected'));
+      el.classList.add('selected');
+    }
+
+    function updateDistance(val) {
+      state.distance = parseFloat(val);
+      document.getElementById('distValText').innerText = val;
+      document.querySelectorAll('.quick-chip').forEach(ch => ch.classList.remove('active'));
+      recomputeSpeed();
+    }
+
+    function setQuickDist(val) {
+      state.distance = val;
+      document.getElementById('sliderDist').value = val;
+      document.getElementById('distValText').innerText = val;
+      document.querySelectorAll('.quick-chip').forEach(ch => {
+        ch.classList.toggle('active', ch.innerText.includes(val + ''));
+      });
+      recomputeSpeed();
+    }
+
+    function recomputeSpeed() {
+      const inside = (state.distance * state.kc * 254) / state.kt;
+      const V = Math.round(Math.sqrt(inside) * 10) / 10;
+      state.calculatedSpeed = V;
+
+      const liveDisplay = document.getElementById('liveSpeedDisplay');
+      if (liveDisplay) {
+        liveDisplay.innerHTML = `${V} <span style="font-size: 16px; font-weight: 700;">км/ч</span>`;
+        liveDisplay.classList.toggle('over-limit', V > state.speedLimit);
+      }
+    }
+
+    function showVerdict() {
+      recomputeSpeed();
+      const V = state.calculatedSpeed;
+      const limit = state.speedLimit;
+      const delta = Math.round((V - limit) * 10) / 10;
+      const isOver = V > limit;
+
+      const box = document.getElementById('verdictBoxYa');
+      const pill = document.getElementById('verdictPill');
+      const mainText = document.getElementById('verdictMainText');
+      const noteText = document.getElementById('verdictNoteText');
+      const mathText = document.getElementById('mathSummaryText');
+
+      if (isOver) {
+        box.className = 'verdict-card-ya';
+        pill.innerText = '⚠️ Превышение скорости';
+        mainText.innerText = `Расчетная скорость: ${V} км/ч (лимит ${limit} км/ч)`;
+        noteText.innerHTML = `
+          Скорость автомобиля перед началом торможения превышала установленный лимит на <strong>${delta} км/ч</strong>.<br><br>
+          В действиях водителя усматривается нарушение <strong>п. 10.1, 10.2 ПДД РФ</strong>. Следствие и суд с высокой вероятностью признают вину в совершении ДТП.
+        `;
+      } else {
+        box.className = 'verdict-card-ya ok';
+        pill.innerText = '✓ Скорость в норме';
+        mainText.innerText = `Расчетная скорость: ${V} км/ч (лимит ${limit} км/ч)`;
+        noteText.innerHTML = `
+          По длине тормозного следа превышения установленной скорости не установлено. Скорость соответствовала дорожному ограничению.
+        `;
+      }
+
+      mathText.innerHTML = `√(${state.distance} м · ${state.kc} [${state.roadName}] · 254 / ${state.kt} [${state.vehicleName}]) = <strong>${V} км/ч</strong>`;
+
+      goToView('view-verdict');
+    }
+
+    function openModal(lawyerName) {
+      document.getElementById('modalDescText').innerHTML = `
+        Заявка к специалисту <strong>${lawyerName}</strong> зарегистрирована в Яндекс.Услугах. Адвокат свяжется с вами по телефону.
+      `;
+      document.getElementById('modalBooking').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('modalBooking').style.display = 'none';
+    }
+  
+    // ============ ИНТЕГРАЦИЯ TELEGRAM MINI APP (TMA) ============
+    const tg = window.Telegram?.WebApp;
+    if (tg || window.self !== window.top || window.innerWidth <= 600) {
+      document.body.classList.add('in-telegram');
+      if (tg) {
+        try {
+          tg.ready();
+          tg.expand();
+          tg.enableClosingConfirmation?.();
+        } catch(e) { console.log(e); }
+      }
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('tmaToast');
+      if (t) {
+        t.innerText = msg;
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2400);
+      }
+    }
+
+    // Состояние для экспертных методик ЭКЦ МВД и СОДФУ
+    state.mvd = {
+      t1: 0.8,
+      t1Desc: 'день/ясно',
+      t2: 0.1,
+      t3: 0.3,
+      sa: 35
+    };
+
+    function setT1(val, desc, btn) {
+      state.mvd.t1 = val;
+      state.mvd.t1Desc = desc;
+      btn.parentElement.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('mvdT1Val').innerText = `${val} с (${desc})`;
+      computeMvd();
+    }
+
+    function updateMvdSa(val) {
+      state.mvd.sa = parseFloat(val);
+      document.getElementById('mvdSaVal').innerText = `${val} м`;
+      computeMvd();
+    }
+
+    function computeMvd() {
+      const Va = state.calculatedSpeed; // км/ч
+      const Va_ms = Va / 3.6;
+      // Замедление по методике ЭКЦ МВД: ja = g * kc * 0.98
+      const ja = Math.round(9.81 * state.kc * 0.9 * 100) / 100;
+      const t_reaction = state.mvd.t1 + state.mvd.t2 + 0.5 * state.mvd.t3;
+      const s_reaction = t_reaction * Va_ms;
+      const s_braking = (Va * Va) / (26 * ja);
+      const S0 = Math.round((s_reaction + s_braking) * 10) / 10;
+      const Sa = state.mvd.sa;
+
+      const elVa = document.getElementById('mvdVaDisplay');
+      if (elVa) elVa.innerText = `${Va} км/ч`;
+      const elJa = document.getElementById('mvdJaVal');
+      if (elJa) elJa.innerText = `${ja} м/с²`;
+
+      const mathEl = document.getElementById('mvdMathFormula');
+      if (mathEl) {
+        mathEl.innerHTML = `S₀ = (${state.mvd.t1} + ${state.mvd.t2} + 0.5·${state.mvd.t3}) · ${Math.round(Va_ms*10)/10} + ${Math.round(Va*Va)} / (26 · ${ja}) = <strong>${S0} м</strong>`;
+      }
+
+      const banner = document.getElementById('mvdVerdictBanner');
+      if (banner) {
+        if (S0 <= Sa) {
+          banner.className = 'mvdVerdictBanner danger';
+          banner.innerHTML = `
+            ⚠️ ВОДИТЕЛЬ РАСПОЛАГАЛ ТЕХНИЧЕСКОЙ ВОЗМОЖНОСТЬЮ<br>
+            <span style="font-size: 11px; font-weight: normal;">
+              Остановочный путь S₀ (${S0} м) меньше удаления пешехода Sa (${Sa} м). Торможение позволяло избежать ДТП. Усматривается нарушение п. 10.1 ПДД РФ.
+            </span>
+          `;
+        } else {
+          banner.className = 'mvdVerdictBanner success';
+          banner.innerHTML = `
+            ✅ ВОДИТЕЛЬ НЕ РАСПОЛАГАЛ ТЕХНИЧЕСКОЙ ВОЗМОЖНОСТЬЮ<br>
+            <span style="font-size: 11px; font-weight: normal;">
+              Остановочный путь S₀ (${S0} м) превышает удаление Sa (${Sa} м). Предотвратить наезд экстренным торможением было технически невозможно! Отсутствует состав ст. 264 УК РФ.
+            </span>
+          `;
+        }
+      }
+
+      // СОДФУ - расчет динамического клевка подвески
+      const dip = Math.round(ja * 6.8); // 40-70 мм
+      const rise = Math.round(ja * 4.5); // 20-45 мм
+      const elDip = document.getElementById('sodfuFrontDip');
+      const elRise = document.getElementById('sodfuRearRise');
+      const elJText = document.getElementById('sodfuJText');
+      if (elDip) elDip.innerText = `-${dip} мм`;
+      if (elRise) elRise.innerText = `+${rise} мм`;
+      if (elJText) elJText.innerText = `${ja}`;
+    }
+
+    function sendVerdictToTelegram() {
+      const data = {
+        type: state.accidentType,
+        vehicle: state.vehicleName,
+        kt: state.kt,
+        road: state.roadName,
+        kc: state.kc,
+        distance: state.distance,
+        speed: state.calculatedSpeed,
+        limit: state.speedLimit,
+        verdict: (state.calculatedSpeed > state.speedLimit) ? 'Превышение скорости' : 'Скорость в норме'
+      };
+
+      if (window.Telegram?.WebApp && window.Telegram.WebApp.initData) {
+        window.Telegram.WebApp.sendData(JSON.stringify(data));
+        showToast("Протокол отправлен боту в Telegram!");
+      } else {
+        // Скопировать в буфер обмена
+        const textReport = `📋 ЭКСПЕРТИЗА ЯНДЕКС.АВТОЭКСПЕРТ\nСкорость: ${data.speed} км/ч (лимит ${data.limit} км/ч)\nЮз: ${data.distance} м | Покрытие: ${data.road}\nВердикт: ${data.verdict}\nФормула: V = √(${data.distance}·${data.kc}·254/${data.kt})`;
+        navigator.clipboard?.writeText(textReport).then(() => {
+          showToast("📋 Заключение скопировано в буфер!");
+        }).catch(() => {
+          showToast("Готово!");
+        });
+      }
+    }
+
+  </script>
+  <div id="tmaToast" class="toast-msg">Скопировано!</div>
+</body>
+</html>
